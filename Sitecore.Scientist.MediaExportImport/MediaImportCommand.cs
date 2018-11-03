@@ -6,8 +6,10 @@ using Sitecore.IO;
 using Sitecore.Shell.Applications.Dialogs.ProgressBoxes;
 using Sitecore.Shell.Framework.Commands;
 using Sitecore.Web.UI.Sheer;
+using System;
 using System.Collections.Specialized;
 using System.IO;
+using System.Security;
 using System.Web;
 
 namespace Sitecore.Scientist.MediaExportImport
@@ -62,7 +64,11 @@ namespace Sitecore.Scientist.MediaExportImport
             Item item = Database.GetItem(itemUri);
             Error.AssertItemFound(item);
             bool flag = true;
-            string str1 = HttpContext.Current.Server.MapPath("~/") + string.Concat(Settings.DataFolder.TrimStart(new char[] { '/' }), "\\", Settings.GetSetting("Sitecore.Scientist.MediaExportImport.ExportFolderName", "MediaExports")) + item.Paths.FullPath;
+            string str1 = string.Concat(Settings.DataFolder.TrimStart(new char[] { '/' }), "\\", Settings.GetSetting("Sitecore.Scientist.MediaExportImport.ExportFolderName", "MediaExports")) + item.Paths.FullPath;
+            if (!IsValidPath(str1))
+            {
+                str1 = HttpContext.Current.Server.MapPath("~/") + str1;
+            }
             str1 = str1.Replace("/", "\\");
             if (FileUtil.FolderExists(FileUtil.MapPath(str1)))
             {
@@ -71,13 +77,30 @@ namespace Sitecore.Scientist.MediaExportImport
                 object[] objArray = new object[] { item, str1, flag };
                 ProgressBox.Execute("Import Media Items...", "Import Media Items", progressBoxMethod, objArray);
             }
-            else
-            {
-                Context.ClientPage.ClientResponse.ShowError("Error", "Import Source folder is not exist.");
-            }
-
         }
+        public bool IsValidPath(string path)
+        {
+            string result;
+            return TryGetFullPath(path, out result);
+        }
+        public bool TryGetFullPath(string path, out string result)
+        {
+            result = String.Empty;
+            if (String.IsNullOrWhiteSpace(path)) { return false; }
+            bool status = false;
 
+            try
+            {
+                result = Path.GetFullPath(path);
+                status = !result.StartsWith("c:\\windows\\system32\\inetsrv\\");
+            }
+            catch (ArgumentException) { }
+            catch (SecurityException) { }
+            catch (NotSupportedException) { }
+            catch (PathTooLongException) { }
+
+            return status;
+        }
         public void StartProcess(params object[] parameters)
         {
             Item item = (Item)parameters[0];

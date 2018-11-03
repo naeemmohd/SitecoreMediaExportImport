@@ -89,6 +89,10 @@ namespace Sitecore.Scientist.MediaExportImport
         {
             var media = MediaManager.GetMedia(mediaItem);
             var stream = media.GetStream();
+            if (stream == null)
+            {
+                stream = media.GetStream(new MediaOptions() { UseMediaCache = true });
+            }
             var outputfile = string.Empty;
             if (!string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(mediaItem.Extension))
             {
@@ -114,13 +118,14 @@ namespace Sitecore.Scientist.MediaExportImport
             {
                 return;
             }
-
-            using (var targetStream = System.IO.File.OpenWrite(outputfile))
+            if (stream != null)
             {
-                stream.CopyTo(targetStream);
-                targetStream.Flush();
+                using (var targetStream = System.IO.File.OpenWrite(outputfile))
+                {
+                    stream.CopyTo(targetStream);
+                    targetStream.Flush();
+                }
             }
-
         }
 
         public void ProcessMediaItems(Item rootMediaItem, bool recursive, string path = null)
